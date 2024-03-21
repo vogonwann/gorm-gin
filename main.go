@@ -3,18 +3,36 @@ package main
 import (
 	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/rs/zerolog/log"
+	"github.com/vogonwann/gorm-gin/config"
+	"github.com/vogonwann/gorm-gin/controller"
 	"github.com/vogonwann/gorm-gin/helper"
+	"github.com/vogonwann/gorm-gin/model"
+	"github.com/vogonwann/gorm-gin/repository"
+	"github.com/vogonwann/gorm-gin/router"
+	"github.com/vogonwann/gorm-gin/service"
 )
 
 func main() {
 	log.Info().Msg("Starting server...")
-	routes := gin.Default()
+	// Database
+	db := config.DatabaseConnection()
+	validate := validator.New()
 
-	routes.GET("", func(ctx *gin.Context) {
-		ctx.JSON(http.StatusOK, "welcome home")
-	})
+	db.Table("tags").AutoMigrate(&model.Tags{})
+	db.Table("users").AutoMigrate(&model.User{})
+
+	// Repository
+	tagsRepository := repository.NewTagsRepositoryImpl(db)
+
+	// service
+	tagsService := service.NewTagsServiceImpl(tagsRepository, validate)
+
+	// Controller
+	tagsController := controller.NewTagsController(tagsService)
+
+	routes := router.NewRouter(tagsController)
 
 	server := &http.Server{
 		Addr:    ":8888",
